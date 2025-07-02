@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FC 25 Pro Clubs Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: transparent;
+            color: #fff;
+            overflow: hidden;
+            user-select: none;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none; /* Make entire overlay click-through by default */
+        }
+
+        .overlay-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+            pointer-events: none; /* Click-through by default */
+        }
+
+        /* Detection Status - Top Left - CLICK THROUGH */
+        .detection-status {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            border: 1px solid #00d4ff;
+            min-width: 220px;
+            z-index: 1000;
+            pointer-events: none; /* Click-through to FC 25 */
+        }
+
+        /* Learning Mode Indicator - CLICK THROUGH */
+        .learning-indicator {
+            position: fixed;
+            top: 20px;
+            left: 260px;
+            background: rgba(255, 107, 0, 0.95);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            border: 2px solid #ff6b00;
+            z-index: 1001;
+            display: none;
+            animation: learningPulse 2s infinite;
+            pointer-events: none; /* Click-through to FC 25 */
+        }
+
+        .learning-indicator.active {
+            display: block;
+        }
+
+        /* Current Screen Display - CLICK THROUGH */
+        .current-screen-display {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: rgba(0, 40, 80, 0.95);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            border: 1px solid #00d4ff;
+            z-index: 1000;
+            pointer-events: none; /* Click-through to FC 25 */
+        }
+
+        @keyframes learningPulse {
+            0% {
+                opacity: 1;
+                box-shadow: 0 0 5px rgba(255, 107, 0, 0.5);
+            }
+            50% {
+                opacity: 0.7;
+                box-shadow: 0 0 20px rgba(255, 107, 0, 0.8);
+            }
+            100% {
+                opacity: 1;
+                box-shadow: 0 0 5px rgba(255, 107, 0, 0.5);
+            }
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .status-indicator:last-of-type {
+            margin-bottom: 0;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff4444;
+            margin-right: 10px;
+        }
+
+        .status-dot.active {
+            background: #00ff44;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 8px rgba(0, 255, 68, 0.6);
+        }
+
+        /* Main Panel - Right Side */
+        .main-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 360px;
+            height: calc(100vh - 40px);
+            background: linear-gradient(135deg, rgba(0, 20, 40, 0.95), rgba(0, 40, 80, 0.95));
+            border: 2px solid #00d4ff;
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+
+        /* Custom Scrollbar - No Ugly Default */
+        .main-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .main-panel::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .main-panel::-webkit-scrollbar-thumb {
+            background: #00d4ff;
+            border-radius: 3px;
+        }
+
+        .main-panel::-webkit-scrollbar-thumb:hover {
+            background: #00a6cc;
+        }
+
+        /* Hotkeys - Bottom Left - CLICK THROUGH */
+        .hotkeys {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            border: 1px solid #00d4ff;
+            z-index: 1000;
+            pointer-events: none; /* Click-through to FC 25 */
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #00d4ff;
+            padding-bottom: 10px;
+        }
+
+        .position-selector {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            color: #00d4ff;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .position-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .position-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #00d4ff;
+            color: #fff;
+            padding: 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .position-btn:hover {
+            background: rgba(0, 212, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .position-btn.active {
+            background: #00d4ff;
+            color: #000;
+            font-weight: bold;
+        }
+
+        .level-section {
+            margin-bottom: 20px;
+        }
+
+        .level-input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .skill-points {
+            background: rgba(0, 212, 255, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .build-info {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .attribute-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .attribute-bar {
+            width: 80px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 0 10px;
+        }
+
+        .attribute-fill {
+            height: 100%;
+            background: linear-gradient(to right, #ff4444, #ffaa00, #00ff44);
+            transition: width 0.3s ease;
+        }
+
+        .playstyles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .playstyle-tag {
+            background: #00d4ff;
+            color: #000;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .playstyle-tag.plus {
+            background: #ff6b00;
+            color: #fff;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            background: #00d4ff;
+            color: #000;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #00a6cc;
+            transform: translateY(-1px);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .meta-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #ff6b00;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 10px;
+            font-weight: bold;
+            animation: pulse 3s infinite;
+        }
+    </style>
+</head>
+<body>
+<div class="overlay-container">
+    <!-- Detection Status - Top Left -->
+    <div class="detection-status">
+        <div class="status-indicator">
+            <div class="status-dot" id="gameStatusDotMain"></div>
+            <span id="gameStatusMain">FC 25 Not Detected</span>
+        </div>
+        <div class="status-indicator">
+            <div class="status-dot" id="menuStatusDotMain"></div>
+            <span id="menuStatusMain">Pro Clubs Menu: Unknown</span>
+        </div>
+        <div style="margin-top: 8px; font-size: 10px; color: #00d4ff;">
+            Press F1 to toggle | F2 for detection test
+        </div>
+    </div>
+
+    <!-- Learning Mode Indicator -->
+    <div class="learning-indicator" id="learningIndicator">
+        <div><strong>🧠 LEARNING MODE</strong></div>
+        <div style="font-size: 10px; margin-top: 3px;">Navigate FC 25 to teach the system</div>
+    </div>
+
+    <!-- Current Screen Display -->
+    <div class="current-screen-display" id="currentScreenDisplay">
+        <div><strong>Current Screen:</strong></div>
+        <div id="detectedScreenName" style="color: #00d4ff; font-weight: bold;">Unknown</div>
+        <div id="screenConfidence" style="font-size: 10px; margin-top: 2px;">Confidence: 0%</div>
+    </div>
+
+    <!-- Main Panel - Right Side -->
+    <div class="main-panel">
+        <div class="meta-badge">META</div>
+
+        <div class="header">
+            <h2>FC 25 Pro Clubs</h2>
+            <div style="font-size: 12px; color: #00d4ff;">Level 120 | 180 SP Max</div>
+        </div>
+
+        <div class="position-selector">
+            <div class="section-title">Position</div>
+            <div class="position-grid">
+                <button class="position-btn active" data-position="ST">ST</button>
+                <button class="position-btn" data-position="CAM">CAM</button>
+                <button class="position-btn" data-position="CM">CM</button>
+                <button class="position-btn" data-position="CDM">CDM</button>
+                <button class="position-btn" data-position="LW">LW/RW</button>
+                <button class="position-btn" data-position="LB">LB/RB</button>
+                <button class="position-btn" data-position="CB">CB</button>
+                <button class="position-btn" data-position="GK">GK</button>
+            </div>
+        </div>
+
+        <div class="level-section">
+            <div class="section-title">Player Level</div>
+            <input type="number" class="level-input" id="levelInput" value="120" min="1" max="120">
+        </div>
+
+        <div class="skill-points">
+            <div>Skill Points: <span id="skillPoints">180</span></div>
+            <div style="font-size: 11px; margin-top: 3px;">
+                Used: <span id="usedPoints">0</span> | Remaining: <span id="remainingPoints">180</span>
+            </div>
+        </div>
+
+        <div class="build-info">
+            <div class="section-title">Current Build: <span id="currentPosition">Advanced Forward</span></div>
+
+            <div class="attribute-item">
+                <span>Pace</span>
+                <div class="attribute-bar">
+                    <div class="attribute-fill" style="width: 95%" id="paceBar"></div>
+                </div>
+                <span id="paceValue">95</span>
+            </div>
+
+            <div class="attribute-item">
+                <span>Shooting</span>
+                <div class="attribute-bar">
+                    <div class="attribute-fill" style="width: 92%" id="shootingBar"></div>
+                </div>
+                <span id="shootingValue">92</span>
+            </div>
+
+            <div class="attribute-item">
+                <span>Dribbling</span>
+                <div class="attribute-bar">
+                    <div class="attribute-fill" style="width: 90%" id="dribblingBar"></div>
+                </div>
+                <span id="dribblingValue">90</span>
+            </div>
+
+            <div class="attribute-item">
+                <span>Physical</span>
+                <div class="attribute-bar">
+                    <div class="attribute-fill" style="width: 75%" id="physicalBar"></div>
+                </div>
+                <span id="physicalValue">75</span>
+            </div>
+
+            <div class="section-title" style="margin-top: 15px;">PlayStyles</div>
+            <div class="playstyles" id="playstyles">
+                <span class="playstyle-tag plus">Finesse Shot+</span>
+                <span class="playstyle-tag plus">Quick Step+</span>
+                <span class="playstyle-tag">Rapid</span>
+                <span class="playstyle-tag">Technical</span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn" id="saveBtn">SAVE</button>
+            <button class="btn" id="loadBtn">LOAD</button>
+            <button class="btn" id="exportBtn">EXPORT</button>
+        </div>
+    </div>
+
+    <!-- Hotkeys - Bottom Left -->
+    <div class="hotkeys">
+        <div><strong>Hotkeys:</strong></div>
+        <div>F1 = Toggle Overlay</div>
+        <div>F2 = Test Detection</div>
+        <div>F6 = Learning Mode</div>
+        <div>F7 = Teach Screen</div>
+    </div>
+</div>
+
+<script>
+    // Global state
+    let currentPosition = 'ST';
+    let currentLevel = 120;
+    let gameDetected = false;
+
+    // Meta builds for Level 120 (180 skill points)
+    const metaBuilds = {
+        ST: {
+            name: 'Advanced Forward',
+            attributes: { pace: 95, shooting: 92, dribbling: 90, physical: 75 },
+            playstyles: ['Finesse Shot+', 'Quick Step+', 'Rapid', 'Technical'],
+            height: "5'9\"", weight: "99 lbs"
+        },
+        CAM: {
+            name: 'Playmaker',
+            attributes: { pace: 90, shooting: 85, dribbling: 92, physical: 70 },
+            playstyles: ['Technical+', 'Pinged Pass+', 'Vision', 'Quick Step'],
+            height: "5'10\"", weight: "99 lbs"
+        },
+        LW: {
+            name: 'Cut-Inside Winger',
+            attributes: { pace: 96, shooting: 88, dribbling: 93, physical: 72 },
+            playstyles: ['Finesse Shot+', 'Rapid+', 'Technical', 'Trivela'],
+            height: "5'9\"", weight: "99 lbs"
+        },
+        CM: {
+            name: 'Box-to-Box',
+            attributes: { pace: 85, shooting: 78, dribbling: 88, physical: 82 },
+            playstyles: ['Relentless+', 'Long Ball Pass+', 'Vision', 'Bruiser'],
+            height: "5'11\"", weight: "150 lbs"
+        },
+        CDM: {
+            name: 'Defensive Anchor',
+            attributes: { pace: 80, shooting: 65, dribbling: 75, physical: 90 },
+            playstyles: ['Intercept+', 'Bruiser+', 'Anticipate', 'Block'],
+            height: "6'0\"", weight: "165 lbs"
+        },
+        CB: {
+            name: 'Ball-Playing Defender',
+            attributes: { pace: 78, shooting: 40, dribbling: 70, physical: 95 },
+            playstyles: ['Anticipate+', 'Block+', 'Aerial', 'Long Ball Pass'],
+            height: "6'2\"", weight: "185 lbs"
+        },
+        LB: {
+            name: 'Wing-Back',
+            attributes: { pace: 92, shooting: 70, dribbling: 85, physical: 80 },
+            playstyles: ['Quick Step+', 'Incisive Pass+', 'Rapid', 'Crossing'],
+            height: "5'10\"", weight: "160 lbs"
+        },
+        GK: {
+            name: 'Sweeper Keeper',
+            attributes: { pace: 60, shooting: 25, dribbling: 50, physical: 85 },
+            playstyles: ['Far Reach+', 'Footwork+', 'Rush Out', 'Long Throw'],
+            height: "6'4\"", weight: "180 lbs"
+        }
+    };
+
+    // Skill points by level (Level 120 = 180 max)
+    const skillPointsByLevel = {
+        1: 10, 10: 25, 20: 45, 30: 65, 40: 85, 50: 105,
+        60: 125, 70: 140, 80: 155, 90: 165, 100: 170,
+        110: 175, 120: 180
+    };
+
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🎮 FC 25 Overlay UI initializing...');
+
+        setupEventListeners();
+        updateBuildDisplay();
+        requestNotificationPermission();
+
+        // Listen for Electron events
+        if (window.electronAPI) {
+            setupElectronListeners();
+        } else {
+            console.warn('⚠️ Electron API not available - running in browser mode');
+        }
+
+        console.log('✅ UI initialized successfully');
+    });
+
+    /**
+     * Set up DOM event listeners
+     */
+    function setupEventListeners() {
+        // Position buttons
+        document.querySelectorAll('.position-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                selectPosition(e.target.dataset.position);
+            });
+        });
+
+        // Level input
+        document.getElementById('levelInput').addEventListener('change', updateSkillPoints);
+
+        // Action buttons
+        document.getElementById('saveBtn').addEventListener('click', saveBuild);
+        document.getElementById('loadBtn').addEventListener('click', loadBuild);
+        document.getElementById('exportBtn').addEventListener('click', exportBuild);
+    }
+
+    /**
+     * Set up Electron IPC listeners
+     */
+    function setupElectronListeners() {
+        // Listen for game detection
+        window.electronAPI.onGameDetected((data) => {
+            gameDetected = data.detected;
+            updateGameStatus(data);
+        });
+
+        // Listen for app ready
+        window.electronAPI.onAppReady((data) => {
+            console.log('📱 App ready:', data);
+            updateDetectionStatus(data.detectionAvailable);
+        });
+
+        // NEW: Listen for screen changes
+        if (window.electronAPI.onScreenChanged) {
+            window.electronAPI.onScreenChanged((data) => {
+                updateCurrentScreen(data.newScreen, data.confidence);
+            });
+        }
+
+        // NEW: Listen for learning status
+        if (window.electronAPI.onLearningStatus) {
+            window.electronAPI.onLearningStatus((data) => {
+                updateLearningMode(data.isLearning, data.message);
+            });
+        }
+    }
+
+    /**
+     * Update current screen display
+     */
+    function updateCurrentScreen(screenName, confidence = 0) {
+        const screenNameElement = document.getElementById('detectedScreenName');
+        const confidenceElement = document.getElementById('screenConfidence');
+
+        if (screenNameElement) {
+            screenNameElement.textContent = screenName || 'Unknown';
+        }
+
+        if (confidenceElement) {
+            const confidencePercent = Math.round((confidence || 0) * 100);
+            confidenceElement.textContent = `Confidence: ${confidencePercent}%`;
+
+            // Color code confidence
+            if (confidencePercent >= 80) {
+                confidenceElement.style.color = '#00ff44';
+            } else if (confidencePercent >= 60) {
+                confidenceElement.style.color = '#ffaa00';
+            } else {
+                confidenceElement.style.color = '#ff4444';
+            }
+        }
+
+        console.log(`📱 Screen updated: ${screenName} (${Math.round((confidence || 0) * 100)}%)`);
+    }
+
+    /**
+     * Update learning mode indicator
+     */
+    function updateLearningMode(isLearning, message) {
+        const learningIndicator = document.getElementById('learningIndicator');
+
+        if (learningIndicator) {
+            if (isLearning) {
+                learningIndicator.classList.add('active');
+            } else {
+                learningIndicator.classList.remove('active');
+            }
+        }
+
+        console.log(`🧠 Learning mode: ${isLearning ? 'ACTIVE' : 'STOPPED'} - ${message}`);
+    }
+
+    /**
+     * Update game detection status in UI
+     */
+    function updateGameStatus(data) {
+        const statusElement = document.getElementById('gameStatusMain');
+        const dotElement = document.getElementById('gameStatusDotMain');
+
+        if (data.detected) {
+            statusElement.textContent = 'FC 25 Detected ✓';
+            dotElement.classList.add('active');
+
+            // Show notification
+            if (window.electronAPI) {
+                window.electronAPI.showNotification('FC 25 Detected!', 'Overlay is ready to use');
+            }
+
+            console.log('🎮 FC 25 game detected:', data.window?.title);
+        } else {
+            statusElement.textContent = 'FC 25 Not Found';
+            dotElement.classList.remove('active');
+            console.log('❌ FC 25 game not detected');
+        }
+    }
+
+    /**
+     * Update detection system status
+     */
+    function updateDetectionStatus(available) {
+        const statusElement = document.getElementById('menuStatusMain');
+        const dotElement = document.getElementById('menuStatusDotMain');
+
+        if (available) {
+            statusElement.textContent = 'Pro Clubs Menu: Active';
+            dotElement.classList.add('active');
+        } else {
+            statusElement.textContent = 'Pro Clubs Menu: Limited';
+            dotElement.classList.remove('active');
+        }
+    }
+
+    /**
+     * Select position and update build
+     */
+    function selectPosition(position) {
+        currentPosition = position;
+
+        // Update button states
+        document.querySelectorAll('.position-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.position === position) {
+                btn.classList.add('active');
+            }
+        });
+
+        updateBuildDisplay();
+        console.log('🎯 Position selected:', position);
+    }
+
+    /**
+     * Update skill points based on level
+     */
+    function updateSkillPoints() {
+        const level = parseInt(document.getElementById('levelInput').value);
+        currentLevel = Math.min(Math.max(level, 1), 120);
+
+        // Calculate skill points
+        let skillPoints = 10; // Base points
+        for (let lvl in skillPointsByLevel) {
+            if (currentLevel >= parseInt(lvl)) {
+                skillPoints = skillPointsByLevel[lvl];
+            }
+        }
+
+        document.getElementById('skillPoints').textContent = skillPoints;
+        document.getElementById('remainingPoints').textContent = skillPoints;
+
+        console.log(`📊 Level ${currentLevel}: ${skillPoints} skill points`);
+    }
+
+    /**
+     * Update build display with current position
+     */
+    function updateBuildDisplay() {
+        const build = metaBuilds[currentPosition];
+        if (!build) return;
+
+        // Update position name
+        document.getElementById('currentPosition').textContent = build.name;
+
+        // Update attributes
+        const attributes = ['pace', 'shooting', 'dribbling', 'physical'];
+        attributes.forEach(attr => {
+            const value = build.attributes[attr];
+            const bar = document.getElementById(attr + 'Bar');
+            const valueSpan = document.getElementById(attr + 'Value');
+
+            if (bar && valueSpan) {
+                bar.style.width = value + '%';
+                valueSpan.textContent = value;
+            }
+        });
+
+        // Update playstyles
+        const playstylesContainer = document.getElementById('playstyles');
+        playstylesContainer.innerHTML = '';
+
+        build.playstyles.forEach(style => {
+            const tag = document.createElement('span');
+            tag.className = style.includes('+') ? 'playstyle-tag plus' : 'playstyle-tag';
+            tag.textContent = style;
+            playstylesContainer.appendChild(tag);
+        });
+
+        console.log('🔄 Build updated:', build.name);
+    }
+
+    /**
+     * Save current build
+     */
+    async function saveBuild() {
+        const buildData = {
+            position: currentPosition,
+            level: currentLevel,
+            build: metaBuilds[currentPosition],
+            timestamp: new Date().toISOString()
+        };
+
+        if (window.electronAPI) {
+            try {
+                const result = await window.electronAPI.saveBuild(buildData);
+                console.log('💾 Build saved:', result);
+
+                if (result.success) {
+                    showStatus('Build saved successfully!', 'success');
+                }
+            } catch (error) {
+                console.error('❌ Save failed:', error);
+                showStatus('Save failed: ' + error.message, 'error');
+            }
+        } else {
+            // Browser fallback
+            localStorage.setItem('fc25-build', JSON.stringify(buildData));
+            showStatus('Build saved to browser storage', 'success');
+        }
+    }
+
+    /**
+     * Load build (placeholder)
+     */
+    function loadBuild() {
+        showStatus('Load feature coming soon!', 'info');
+    }
+
+    /**
+     * Export current build
+     */
+    async function exportBuild() {
+        const buildData = {
+            position: currentPosition,
+            level: currentLevel,
+            build: metaBuilds[currentPosition],
+            exportedAt: new Date().toISOString(),
+            version: '1.0.0'
+        };
+
+        if (window.electronAPI) {
+            try {
+                const result = await window.electronAPI.exportBuild(buildData);
+                console.log('📤 Export result:', result);
+                showStatus('Build exported!', 'success');
+            } catch (error) {
+                console.error('❌ Export failed:', error);
+            }
+        } else {
+            // Browser fallback - download as JSON
+            const jsonData = JSON.stringify(buildData, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `FC25_${currentPosition}_Build_L${currentLevel}.json`;
+            a.click();
+
+            URL.revokeObjectURL(url);
+            showStatus('Build downloaded!', 'success');
+        }
+    }
+
+    /**
+     * Show status message
+     */
+    function showStatus(message, type = 'info') {
+        console.log(`📢 [${type.toUpperCase()}] ${message}`);
+
+        // Could add a toast notification here
+        if (window.electronAPI) {
+            window.electronAPI.showNotification('FC 25 Overlay', message);
+        }
+    }
+
+    /**
+     * Request notification permission
+     */
+    async function requestNotificationPermission() {
+        if (window.electronAPI) {
+            const permission = await window.electronAPI.requestNotificationPermission();
+            console.log('🔔 Notification permission:', permission);
+        }
+    }
+
+    // Keyboard shortcuts (when focused)
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            // Could hide overlay or reset
+            console.log('⌨️ Escape pressed');
+        }
+    });
+
+    console.log('📜 FC 25 Overlay script loaded');
+</script>
+</body>
+</html>
